@@ -1,0 +1,33 @@
+<%- include("partials/header"); -%>
+
+
+
+  <div class="validation-box">
+    <h2>Avant de publier</h2>
+    <p>Merci d’écrire une courte description avant de publier :</p>
+    <textarea id="motivation" placeholder="Écrivez quelque chose ici..."></textarea>
+    <div class="error" id="errorMsg"></div>
+    <button onclick="verifierEtContinuer()">Continuer</button>
+  </div>
+
+  <script>
+  function verifierEtContinuer() {
+    const texte = document.getElementById("motivation").value.trim().toLowerCase();
+    const errorMsg = document.getElementById("errorMsg");
+
+    if (texte === "") {
+      errorMsg.textContent = "Veuillez écrire le mot de l'entreprise.";
+      return;
+    }
+
+    if (texte === "compose") {
+      window.location.href = "/compose";
+    } else {
+      window.location.href = "/";
+    }
+  }
+</script>
+
+
+
+<%- include("partials/footer"); -%>

@@ -1,0 +1,30 @@
+<%- include("partials/header"); -%>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <h1>Bienvenue chez TIBE-TECH SARL</h1>
+    <p><%= startingContent %></p>
+    <a href="/contact" class="btn btn-primary">Contactez-nous</a>
+  </div>
+</section>
+
+<!-- NOS PROJETS / ARTICLES -->
+<section class="posts-section">
+  <div class="container post-cadre">
+    <h2>Dernières actualités</h2>
+    <div class="posts-grid">
+      <% posts.forEach(function(post){ %>
+        <div class="post-card">
+          <h3><%= post.title %></h3>
+          <p>
+            <%= post.content.substring(0, 200) + " ..." %>
+          </p>
+          <a href="/posts/<%= post.title %>" class="btn btn-secondary">En savoir plus</a>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer"); -%>
