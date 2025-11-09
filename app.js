@@ -1,4 +1,4 @@
-// jshint esversion:6
+//jshint esversion:6
 
 import express from "express";
 import bodyParser from "body-parser";
@@ -6,71 +6,59 @@ import ejs from "ejs";
 import _ from "lodash";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
-import fs from "fs";
 
-// 🔍 Détection : en local ou sur Railway ?
-const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined;
-
-// Charger automatiquement le bon .env
-if (!isRailway && fs.existsSync(".env.local")) {
-  dotenv.config({ path: ".env.local" });
-  console.log("🖥️ Mode LOCAL détecté (fichier .env.local chargé)");
-} else {
-  dotenv.config();
-  console.log("☁️ Mode RAILWAY détecté (variables Railway chargées)");
-}
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.set("view engine", "ejs");
+// Détection du mode Railway
+if (process.env.RAILWAY_ENVIRONMENT) {
+  console.log("☁️ Mode RAILWAY détecté (variables Railway chargées)");
+}
+
+// Middleware
+app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// 📦 Connexion MySQL
+// Connexion MySQL (Railway ou locale)
 const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-  ssl: isRailway ? { rejectUnauthorized: true } : false,
+  host: process.env.MYSQLHOST || process.env.DB_HOST || "localhost",
+  user: process.env.MYSQLUSER || process.env.DB_USER || "root",
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || "",
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME || "tibetechdb",
+  port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
+  ssl: process.env.RAILWAY_ENVIRONMENT ? { rejectUnauthorized: true } : false,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
+  queueLimit: 0
 });
 
-// ✅ Test de connexion MySQL au démarrage
+// Vérification de la connexion MySQL
 (async () => {
   try {
-    const [rows] = await db.query("SELECT NOW() AS now");
-    console.log("✅ Connexion MySQL réussie :", rows[0].now);
+    const conn = await db.getConnection();
+    console.log("✅ Connexion MySQL réussie !");
+    conn.release();
   } catch (err) {
-    console.error("❌ Erreur de connexion MySQL :", err.message);
+    console.error("❌ Erreur de connexion MySQL :", err);
   }
 })();
 
-// Contenus statiques
-const homeStartingContent =
-  "Bienvenue chez TIBE-TECH SARL, votre partenaire de confiance...";
-const aboutContent =
-  "Chez TIBE-TECH SARL, nous croyons que chaque projet mérite une solution moderne...";
-const contactContent =
-  "Pour toute demande d’information, de devis ou de collaboration...";
-const projectsContent =
-  "TIBE-TECH SARL, votre partenaire de confiance pour des solutions techniques durables...";
+// --- ROUTES ---
+const homeStartingContent = "Bienvenue chez TIBE-TECH SARL, votre partenaire de confiance...";
+const aboutContent = "Chez TIBE-TECH SARL, nous croyons que chaque projet mérite une solution moderne...";
+const contactContent = "Pour toute demande d’information, de devis ou de collaboration...";
+const projectsContent = "TIBE-TECH SARL, votre partenaire de confiance pour des solutions techniques durables...";
 
-// Routes principales
 app.get("/", async (req, res) => {
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM posts ORDER BY id DESC LIMIT 6"
-    );
-    const posts = rows.map((post) => ({
+    const [rows] = await db.query("SELECT * FROM posts ORDER BY id DESC LIMIT 6");
+    const posts = rows.map(post => ({
       ...post,
-      content: post.content ? post.content.toString() : "",
+      content: post.content ? post.content.toString() : ""
     }));
-
     res.render("home", { startingContent: homeStartingContent, posts });
   } catch (err) {
     console.error("Erreur MySQL :", err);
@@ -87,10 +75,7 @@ app.get("/compose", (req, res) => res.render("compose"));
 app.post("/compose", async (req, res) => {
   const { postTitle, postBody } = req.body;
   try {
-    await db.query("INSERT INTO posts (title, content) VALUES (?, ?)", [
-      postTitle,
-      postBody,
-    ]);
+    await db.query("INSERT INTO posts (title, content) VALUES (?, ?)", [postTitle, postBody]);
     res.redirect("/");
   } catch (err) {
     console.error("Erreur MySQL (INSERT) :", err);
@@ -102,8 +87,7 @@ app.get("/posts/:postName", async (req, res) => {
   const requestedTitle = _.lowerCase(req.params.postName);
   try {
     const [rows] = await db.query("SELECT * FROM posts");
-    const post = rows.find((p) => _.lowerCase(p.title) === requestedTitle);
-
+    const post = rows.find(p => _.lowerCase(p.title) === requestedTitle);
     if (post) {
       res.render("post", { title: post.title, content: post.content });
     } else {
@@ -115,7 +99,4 @@ app.get("/posts/:postName", async (req, res) => {
   }
 });
 
-// 🚀 Démarrage du serveur
-app.listen(PORT, () => {
-  console.log(`✅ Serveur en écoute sur le port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Serveur en écoute sur le port ${PORT}`));
