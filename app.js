@@ -17,16 +17,11 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// Détection du mode Railway
+// --- Détection du mode Railway ---
 const isRailway = !!process.env.MYSQLHOST;
-if (isRailway) {
-  console.log("☁️ Mode RAILWAY détecté (variables Railway chargées)");
-} else {
-  console.log("💻 Mode LOCAL détecté (variables .env locales chargées)");
-}
+console.log(`☁️ Mode ${isRailway ? "RAILWAY" : "LOCAL"} détecté (variables chargées)`);
 
-//const isRailway = !!process.env.MYSQLHOST; // vrai si on est sur Railway
-
+// --- Pool MySQL ---
 const db = mysql.createPool({
   host: isRailway ? process.env.MYSQLHOST : process.env.DB_HOST || "localhost",
   user: isRailway ? process.env.MYSQLUSER : process.env.DB_USER || "root",
@@ -39,28 +34,18 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-db.getConnection()
-  .then(conn => {
-    console.log("✅ Connexion MySQL réussie !");
-    conn.release();
-  })
-  .catch(err => {
-    console.error("❌ Erreur de connexion MySQL :", err.stack);
-  });
-
-
-// Vérification de la connexion MySQL au démarrage
+// --- Test de connexion MySQL au démarrage ---
 (async () => {
   try {
     const conn = await db.getConnection();
     console.log("✅ Connexion MySQL réussie !");
     conn.release();
   } catch (err) {
-    console.error("❌ Erreur de connexion MySQL :", err);
+    console.error("❌ Erreur de connexion MySQL :", err.stack);
   }
 })();
 
-// Contenus textes
+// --- Contenus textes ---
 const homeStartingContent = "Bienvenue chez TIBE-TECH SARL, votre partenaire de confiance...";
 const aboutContent = "Chez TIBE-TECH SARL, nous croyons que chaque projet mérite une solution moderne...";
 const contactContent = "Pour toute demande d’information, de devis ou de collaboration...";
@@ -76,8 +61,8 @@ app.get("/", async (req, res) => {
     }));
     res.render("home", { startingContent: homeStartingContent, posts });
   } catch (err) {
-    console.error("Erreur MySQL :", err);
-    res.send("Erreur MySQL : " + err.message);
+    console.error("Erreur MySQL :", err.stack);
+    res.send("Erreur MySQL : " + err.stack);
   }
 });
 
@@ -93,8 +78,8 @@ app.post("/compose", async (req, res) => {
     await db.query("INSERT INTO posts (title, content) VALUES (?, ?)", [postTitle, postBody]);
     res.redirect("/");
   } catch (err) {
-    console.error("Erreur MySQL (INSERT) :", err);
-    res.send("Erreur MySQL : " + err.message);
+    console.error("Erreur MySQL (INSERT) :", err.stack);
+    res.send("Erreur MySQL : " + err.stack);
   }
 });
 
@@ -109,10 +94,10 @@ app.get("/posts/:postName", async (req, res) => {
       res.send("Article non trouvé.");
     }
   } catch (err) {
-    console.error("Erreur MySQL :", err);
-    res.send("Erreur lors du chargement de l'article.");
+    console.error("Erreur MySQL :", err.stack);
+    res.send("Erreur lors du chargement de l'article : " + err.stack);
   }
 });
 
-// Démarrage du serveur
+// --- Démarrage du serveur ---
 app.listen(PORT, () => console.log(`✅ Serveur en écoute sur le port ${PORT}`));
