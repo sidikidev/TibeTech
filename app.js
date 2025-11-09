@@ -12,8 +12,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware
-app.set('view engine', 'ejs');
+// --- Middleware ---
+app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
@@ -41,7 +41,7 @@ const db = mysql.createPool({
     console.log("✅ Connexion MySQL réussie !");
     conn.release();
   } catch (err) {
-    console.error("❌ Erreur de connexion MySQL :", err.stack);
+    console.error("❌ Erreur de connexion MySQL complète :", err);
   }
 })();
 
@@ -62,10 +62,7 @@ app.get("/", async (req, res) => {
     res.render("home", { startingContent: homeStartingContent, posts });
   } catch (err) {
     console.error("❌ Erreur MySQL complète :", err);
-    res.send(`
-      <h2>Erreur MySQL</h2>
-      <pre>${JSON.stringify(err, null, 2)}</pre>
-    `);
+    res.send(`<h2>Erreur MySQL</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
   }
 });
 
@@ -81,8 +78,8 @@ app.post("/compose", async (req, res) => {
     await db.query("INSERT INTO posts (title, content) VALUES (?, ?)", [postTitle, postBody]);
     res.redirect("/");
   } catch (err) {
-    console.error("Erreur MySQL (INSERT) :", err.stack);
-    res.send("Erreur MySQL : " + err.stack);
+    console.error("❌ Erreur MySQL (INSERT) complète :", err);
+    res.send(`<h2>Erreur MySQL (INSERT)</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
   }
 });
 
@@ -94,11 +91,11 @@ app.get("/posts/:postName", async (req, res) => {
     if (post) {
       res.render("post", { title: post.title, content: post.content });
     } else {
-      res.send("Article non trouvé.");
+      res.send("<h2>Article non trouvé.</h2>");
     }
   } catch (err) {
-    console.error("Erreur MySQL :", err.stack);
-    res.send("Erreur lors du chargement de l'article : " + err.stack);
+    console.error("❌ Erreur MySQL complète :", err);
+    res.send(`<h2>Erreur MySQL</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
   }
 });
 
