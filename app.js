@@ -25,18 +25,20 @@ if (isRailway) {
   console.log("💻 Mode LOCAL détecté (variables .env locales chargées)");
 }
 
-// Connexion MySQL (Railway ou local)
 const db = mysql.createPool({
   host: process.env.MYSQLHOST || process.env.DB_HOST || "localhost",
   user: process.env.MYSQLUSER || process.env.DB_USER || "root",
   password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || "",
   database: process.env.MYSQLDATABASE || process.env.DB_NAME || "tibetechdb",
   port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
-  ssl: isRailway ? { rejectUnauthorized: true } : false,
+  ssl: process.env.MYSQLHOST ? { rejectUnauthorized: true } : false,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
+
+
+
 
 // Vérification de la connexion MySQL au démarrage
 (async () => {
