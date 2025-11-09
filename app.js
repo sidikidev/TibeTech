@@ -61,8 +61,11 @@ app.get("/", async (req, res) => {
     }));
     res.render("home", { startingContent: homeStartingContent, posts });
   } catch (err) {
-    console.error("Erreur MySQL :", err.stack);
-    res.send("Erreur MySQL : " + err.stack);
+    console.error("❌ Erreur MySQL complète :", err);
+    res.send(`
+      <h2>Erreur MySQL</h2>
+      <pre>${JSON.stringify(err, null, 2)}</pre>
+    `);
   }
 });
 
