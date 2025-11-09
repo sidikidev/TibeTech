@@ -1,4 +1,4 @@
-//jshint esversion:6
+// jshint esversion:6
 
 import express from "express";
 import bodyParser from "body-parser";
@@ -12,30 +12,33 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Détection du mode Railway
-if (process.env.RAILWAY_ENVIRONMENT) {
-  console.log("☁️ Mode RAILWAY détecté (variables Railway chargées)");
-}
-
 // Middleware
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// Connexion MySQL (Railway ou locale)
+// Détection du mode Railway
+const isRailway = !!process.env.MYSQLHOST;
+if (isRailway) {
+  console.log("☁️ Mode RAILWAY détecté (variables Railway chargées)");
+} else {
+  console.log("💻 Mode LOCAL détecté (variables .env locales chargées)");
+}
+
+// Connexion MySQL (Railway ou local)
 const db = mysql.createPool({
   host: process.env.MYSQLHOST || process.env.DB_HOST || "localhost",
   user: process.env.MYSQLUSER || process.env.DB_USER || "root",
   password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || "",
   database: process.env.MYSQLDATABASE || process.env.DB_NAME || "tibetechdb",
   port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
-  ssl: process.env.RAILWAY_ENVIRONMENT ? { rejectUnauthorized: true } : false,
+  ssl: isRailway ? { rejectUnauthorized: true } : false,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-// Vérification de la connexion MySQL
+// Vérification de la connexion MySQL au démarrage
 (async () => {
   try {
     const conn = await db.getConnection();
@@ -46,12 +49,13 @@ const db = mysql.createPool({
   }
 })();
 
-// --- ROUTES ---
+// Contenus textes
 const homeStartingContent = "Bienvenue chez TIBE-TECH SARL, votre partenaire de confiance...";
 const aboutContent = "Chez TIBE-TECH SARL, nous croyons que chaque projet mérite une solution moderne...";
 const contactContent = "Pour toute demande d’information, de devis ou de collaboration...";
 const projectsContent = "TIBE-TECH SARL, votre partenaire de confiance pour des solutions techniques durables...";
 
+// --- ROUTES ---
 app.get("/", async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM posts ORDER BY id DESC LIMIT 6");
@@ -99,4 +103,5 @@ app.get("/posts/:postName", async (req, res) => {
   }
 });
 
+// Démarrage du serveur
 app.listen(PORT, () => console.log(`✅ Serveur en écoute sur le port ${PORT}`));
