@@ -4,7 +4,6 @@ import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
 import _ from "lodash";
-import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -16,54 +15,50 @@ app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// --- Détection du mode Railway ---
-const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined;
-//const isRailway = !!process.env.MYSQLHOST;
-console.log(`☁️ Mode ${isRailway ? "RAILWAY" : "LOCAL"} détecté (variables chargées)`);
-
-// --- Pool MySQL ---
-const db = mysql.createPool({
-  host: isRailway ? process.env.MYSQLHOST : process.env.DB_HOST || "localhost",
-  user: isRailway ? process.env.MYSQLUSER : process.env.DB_USER || "root",
-  password: isRailway ? process.env.MYSQLPASSWORD : process.env.DB_PASSWORD || "",
-  database: isRailway ? process.env.MYSQLDATABASE : process.env.DB_NAME || "tibetechdb",
-  port: isRailway ? process.env.MYSQLPORT : process.env.DB_PORT || 3306,
-  ssl: isRailway ? { rejectUnauthorized: true } : false,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
-
-// Test de connexion
-(async () => {
-  try {
-    const conn = await db.getConnection();
-    console.log("✅ Connexion MySQL réussie !");
-    conn.release();
-  } catch (err) {
-    console.error("❌ Erreur de connexion MySQL :", err.message);
-  }
-})();
-
 // --- Contenus textes ---
 const homeStartingContent = "Bienvenue chez TIBE-TECH SARL, votre partenaire de confiance...";
 const aboutContent = "Chez TIBE-TECH SARL, nous croyons que chaque projet mérite une solution moderne...";
 const contactContent = "Pour toute demande d’information, de devis ou de collaboration...";
 const projectsContent = "TIBE-TECH SARL, votre partenaire de confiance pour des solutions techniques durables...";
 
-// --- ROUTES ---
-app.get("/", async (req, res) => {
-  try {
-    const [rows] = await db.query("SELECT * FROM posts ORDER BY id DESC LIMIT 6");
-    const posts = rows.map(post => ({
-      ...post,
-      content: post.content ? post.content.toString() : ""
-    }));
-    res.render("home", { startingContent: homeStartingContent, posts });
-  } catch (err) {
-    console.error("❌ Erreur MySQL complète :", err);
-    res.send(`<h2>Erreur MySQL</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
+// --- Dictionnaire interne des posts ---
+// --- Dictionnaire interne des posts ---
+let posts = [
+  {
+    id: 1,
+    title: "Les dernières tendances en informatique",
+    content: "Découvrez comment l'intelligence artificielle, le cloud computing et la cybersécurité transforment les entreprises modernes. Nous partageons des conseils pratiques pour rester à la pointe de la technologie."
+  },
+  {
+    id: 2,
+    title: "Innovations dans le BTP",
+    content: "Le secteur du BTP évolue avec des méthodes de construction durables, l'utilisation de drones pour le suivi des chantiers et la modélisation 3D des projets. Ces innovations permettent d'améliorer la sécurité et la productivité."
+  },
+  {
+    id: 3,
+    title: "Électricité et énergies renouvelables",
+    content: "L'énergie solaire et l'efficacité énergétique sont au cœur des solutions électriques modernes. Nous explorons les meilleures pratiques pour l'installation de systèmes photovoltaïques et la réduction des consommations énergétiques."
+  },
+  {
+    id: 4,
+    title: "Formations professionnelles et développement",
+    content: "Acquérir de nouvelles compétences est essentiel pour progresser. Nous proposons des formations en informatique, en gestion de projet, en sécurité électrique et en techniques du BTP adaptées aux professionnels et étudiants."
+  },
+  {
+    id: 5,
+    title: "Sécurité informatique et protection des données",
+    content: "Avec la multiplication des cyberattaques, protéger vos systèmes et données est crucial. Nous partageons des stratégies de cybersécurité, des outils de chiffrement et des conseils pour sécuriser vos applications et réseaux."
+  },
+  {
+    id: 6,
+    title: "Techniques avancées dans le BTP",
+    content: "Les nouvelles technologies permettent de concevoir des bâtiments plus solides et plus écologiques. Découvrez l'utilisation des matériaux innovants, l'automatisation des chantiers et l'optimisation des coûts dans vos projets de construction."
   }
+];
+
+// --- ROUTES ---
+app.get("/", (req, res) => {
+  res.render("home", { startingContent: homeStartingContent, posts });
 });
 
 app.get("/about", (req, res) => res.render("about", { aboutContent }));
@@ -72,30 +67,24 @@ app.get("/projects", (req, res) => res.render("projects", { projectsContent }));
 app.get("/blogpost", (req, res) => res.render("blogpost"));
 app.get("/compose", (req, res) => res.render("compose"));
 
-app.post("/compose", async (req, res) => {
+app.post("/compose", (req, res) => {
   const { postTitle, postBody } = req.body;
-  try {
-    await db.query("INSERT INTO posts (title, content) VALUES (?, ?)", [postTitle, postBody]);
-    res.redirect("/");
-  } catch (err) {
-    console.error("❌ Erreur MySQL (INSERT) complète :", err);
-    res.send(`<h2>Erreur MySQL (INSERT)</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
-  }
+  const newPost = {
+    id: posts.length + 1,
+    title: postTitle,
+    content: postBody
+  };
+  posts.unshift(newPost); // Ajout au début pour garder les derniers en premier
+  res.redirect("/");
 });
 
-app.get("/posts/:postName", async (req, res) => {
+app.get("/posts/:postName", (req, res) => {
   const requestedTitle = _.lowerCase(req.params.postName);
-  try {
-    const [rows] = await db.query("SELECT * FROM posts");
-    const post = rows.find(p => _.lowerCase(p.title) === requestedTitle);
-    if (post) {
-      res.render("post", { title: post.title, content: post.content });
-    } else {
-      res.send("<h2>Article non trouvé.</h2>");
-    }
-  } catch (err) {
-    console.error("❌ Erreur MySQL complète :", err);
-    res.send(`<h2>Erreur MySQL</h2><pre>${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}</pre>`);
+  const post = posts.find(p => _.lowerCase(p.title) === requestedTitle);
+  if (post) {
+    res.render("post", { title: post.title, content: post.content });
+  } else {
+    res.send("<h2>Article non trouvé.</h2>");
   }
 });
 
