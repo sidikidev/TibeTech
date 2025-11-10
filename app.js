@@ -6,7 +6,6 @@ import ejs from "ejs";
 import _ from "lodash";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const app = express();
@@ -18,7 +17,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 // --- Détection du mode Railway ---
-const isRailway = !!process.env.MYSQLHOST;
+const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined;
+//const isRailway = !!process.env.MYSQLHOST;
 console.log(`☁️ Mode ${isRailway ? "RAILWAY" : "LOCAL"} détecté (variables chargées)`);
 
 // --- Pool MySQL ---
@@ -34,14 +34,14 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// --- Test de connexion MySQL au démarrage ---
+// Test de connexion
 (async () => {
   try {
     const conn = await db.getConnection();
     console.log("✅ Connexion MySQL réussie !");
     conn.release();
   } catch (err) {
-    console.error("❌ Erreur de connexion MySQL complète :", err);
+    console.error("❌ Erreur de connexion MySQL :", err.message);
   }
 })();
 
